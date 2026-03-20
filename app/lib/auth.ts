@@ -1,7 +1,6 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import postgres from 'postgres'
-import bcrypt from 'bcryptjs'
 
 // Validate environment variables
 const requiredEnvVars = ['POSTGRES_URL', 'AUTH_SECRET']
@@ -44,11 +43,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           const user = result[0]
 
-          // Verify password
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password as string,
-            user.password
-          )
+          // Verify password (plain text comparison)
+          const isPasswordValid = credentials.password === user.password
 
           if (!isPasswordValid) {
             return null

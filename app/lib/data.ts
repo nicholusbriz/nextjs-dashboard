@@ -11,9 +11,9 @@ import { formatCurrency } from './utils';
 
 const sql = postgres(process.env.POSTGRES_URL!, {
   ssl: 'require',
-  connect_timeout: 30,
-  idle_timeout: 20,
-  max: 10,
+  connect_timeout: 10,
+  idle_timeout: 5,
+  max: 5,
 });
 
 export async function fetchRevenue() {

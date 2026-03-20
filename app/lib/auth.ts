@@ -1,9 +1,20 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import postgres from 'postgres'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' })
+// Validate environment variables
+const requiredEnvVars = ['POSTGRES_URL', 'AUTH_SECRET']
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar])
+
+if (missingEnvVars.length > 0) {
+  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`)
+}
+
+const sql = postgres(process.env.POSTGRES_URL!, {
+  ssl: 'require',
+  connect_timeout: 10,
+})
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -14,11 +25,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         try {
+          if (!credentials?.email || !credentials?.password) {
+            return null
+          }
+
           // Query user from database
           const result = await sql`
             SELECT id, name, email, password 
             FROM users 
-            WHERE email = ${credentials?.email as string}
+            WHERE email = ${credentials.email as string}
           `
 
           if (result.length === 0) {
@@ -29,7 +44,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           // Verify password
           const isPasswordValid = await bcrypt.compare(
-            credentials?.password as string,
+            credentials.password as string,
             user.password
           )
 
@@ -44,7 +59,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         } catch (error) {
           console.error('Authentication error:', error)
-          return null
+          throw new Error('Database authentication failed')
         }
       }
     })
